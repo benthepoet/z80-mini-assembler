@@ -5,6 +5,35 @@
 #define BASE_OPCODE_COUNT 14
 #define EXT_OPCODE_COUNT 21
 
+typedef unsigned char byte;
+
+typedef struct {
+    // Contains the raw user input
+    char inputBuffer[24];
+
+    // Contains the formatted user input
+    char workBuffer[32];
+    byte workCursor;
+
+    char mnemonic[5];
+
+    char tokens[7];
+
+    int opcode;
+    byte opcodeShifts[2];
+
+    int operand;
+    byte operandLength;
+
+    byte displacement;
+} State;
+
+typedef struct {
+    int prefix;
+    byte opcode;
+    char pattern[7];
+} PatternOpcode;
+
 typedef struct {
     char key[5];
     unsigned char opcode;
@@ -51,8 +80,8 @@ StaticOpcode extOpcodes[EXT_OPCODE_COUNT] = {
 	{ .key = "cpir", .opcode = 0xb1 },
 };
 
-StaticOpcode *search_static_opcodes(char *key, StaticOpcode *arr, unsigned char length) {
-    for (int i = 0; i < length; i++) {
+StaticOpcode *search_static_opcodes(char *key, StaticOpcode *arr, byte arrLength) {
+    for (int i = 0; i < arrLength; i++) {
         if (strcmp(arr[i].key, key) == 0) {
             return &arr[i];
         }
@@ -61,9 +90,34 @@ StaticOpcode *search_static_opcodes(char *key, StaticOpcode *arr, unsigned char 
     return NULL;
 }
 
+void sanitize_buffer(char line[], char buffer[], byte bufferLength) {
+    byte cursor = 0;
+
+    for (int i = 0; i < bufferLength; i++) {
+        byte c = buffer[i];
+        if (c == ',') {
+            line[cursor++] = ' ';
+        } else if (c == '(') {
+            line[cursor++] = c;
+            line[cursor++] = ' ';
+        } else if (c == ')') {
+            line[cursor++] = ' ';
+            line[cursor++] = c;
+        } else if (c == '+') {
+            line[cursor++] = ' ';
+            line[cursor++] = c;
+            line[cursor++] = ' ';
+        } else {
+            line[cursor++] = c;
+        }
+    }
+
+    printf("%s %lu\n", line, strlen(line));
+}
+
 int main(int argc, char *argv[])
 {
-    char buffer[16];
+    char buffer[24];
 
     fgets(buffer, sizeof(buffer), stdin);
     buffer[strcspn(buffer, "\n")] = 0;
@@ -72,8 +126,11 @@ int main(int argc, char *argv[])
 
     if (inputLength < 2 || inputLength > 4) {
         printf("Invalid mnemonic\n");
-        return 1;
+        //return 1;
     }
+
+    char line[32];
+    sanitize_buffer(line, buffer, inputLength);
 
     StaticOpcode *found = search_static_opcodes(buffer, baseOpcodes, BASE_OPCODE_COUNT);
     if (found == NULL && inputLength > 2) {
