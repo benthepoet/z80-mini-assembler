@@ -15,8 +15,10 @@ typedef struct {
     char workBuffer[32];
     byte workCursor;
 
+    // The instruction mnemonic
     char mnemonic[5];
 
+    // The instruction tokens
     char tokens[7];
 
     int opcode;
